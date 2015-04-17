@@ -12,27 +12,9 @@
         <TextView
             android:id="@+id/touch_area"
             android:layout_width="match_parent"
-            android:layout_height="300dip"
+            android:layout_height="match_parent"
             android:text="触摸事件测试区域"/>
 
-
-        <TextView
-            android:id="@+id/history_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="历史数据量："/>
-
-        <TextView
-            android:id="@+id/event_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="触摸事件："/>
-
-        <Button
-            android:id="@+id/btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="click"/>
     </LinearLayout>
 
 </RelativeLayout>
