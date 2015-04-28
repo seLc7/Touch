@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -23,8 +24,13 @@ import java.io.FileOutputStream;
 public class MainActivity extends Activity implements Runnable {
 
     TextView touchView;
-    int oldX, oldY, newX, newY;
+    // oldX,oldY:点下去获取的坐标；newX,newY：抬起获取的坐标；touch：移动中的坐标；mX,mY：公共存储坐标，存储运动轨迹的起始坐标。
+    int oldX, oldY, newX, newY, touchX, touchY,mX,mY;
     static Handler handler;
+    Canvas canvas = new Canvas();
+    Bitmap bitmap = null;
+    Paint paint = new Paint();
+    Path path = new Path();
 
     private static final int DONE = 1;
 
@@ -32,6 +38,9 @@ public class MainActivity extends Activity implements Runnable {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        bitmap = BitmapFactory.decodeFile("/sdcard/0.png").copy(Bitmap.Config.ARGB_8888, true);
+        canvas = new Canvas(bitmap);
 
         touchView = (TextView) findViewById(R.id.touch_area);
 
@@ -42,16 +51,17 @@ public class MainActivity extends Activity implements Runnable {
                 switch (action) {
                     case (MotionEvent.ACTION_DOWN):
                         display("ACTION_DOWN", event);
-                        setOldCoordinate(event);
+                        touchDown(event);
                         break;
                     case (MotionEvent.ACTION_UP):
                         display("ACTION_UP", event);
-                        setNewCoordinate(event);
+                        touchUp(event);
                         Thread thread = new Thread(MainActivity.this);
                         thread.start();
                         break;
                     case (MotionEvent.ACTION_MOVE):
                         display("ACTION_MOVE", event);
+                        touchMove(event);
                         break;
                 }
                 return true;
@@ -86,39 +96,74 @@ public class MainActivity extends Activity implements Runnable {
         touchView.setText(msg);
     }
 
-    /*获取down触点坐标*/
-    private void setOldCoordinate(MotionEvent event) {
+    /*手指点下屏幕时调用*/
+    private void touchDown(MotionEvent event) {
+        path.reset();
         oldX = (int) event.getRawX();
         oldY = (int) event.getRawY();
+        mX=oldX;
+        mY=oldY;
+        path.moveTo(oldX,oldY);
     }
 
     /*获取up触点坐标*/
-    private void setNewCoordinate(MotionEvent event) {
+    private void touchUp(MotionEvent event) {
         newX = (int) event.getRawX();
         newY = (int) event.getRawY();
 
     }
 
+    /*手指在屏幕上滑动时调用*/
+    private void touchMove(MotionEvent event) {
+        touchX = (int) event.getRawX();
+        touchY = (int) event.getRawY();
+
+        final float previousX = mX;
+        final float previousY = mY;
+
+        final float dx = Math.abs(touchX - previousX);
+        final float dy = Math.abs(touchY - previousY);
+
+        paint.setAntiAlias(true);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(5);
+        paint.setColor(Color.YELLOW);
+
+        //两点之间的距离大于等于3时，生成贝塞尔绘制曲线
+        if (dx >= 3 || dy >= 3)
+        {
+            //设置贝塞尔曲线的操作点为起点和终点的一半
+            float cX = (touchX + previousX) / 2;
+            float cY = (touchY + previousY) / 2;
+
+            //二次贝塞尔，实现平滑曲线；previousX, previousY为操作点，cX, cY为终点
+            path.quadTo(previousX, previousY, cX, cY);
+
+            canvas.drawPath(path, this.paint);  // 绘制线
+            canvas.save(Canvas.ALL_SAVE_FLAG);
+            canvas.restore();
+            //第二次执行时，第一次结束调用的坐标值将作为第二次调用的初始坐标值
+            mX = touchX;
+            mY = touchY;
+        }
+    }
+
     /*绘图进程*/
     @Override
     public void run() {
-        Bitmap bitmap = BitmapFactory.decodeFile("/sdcard/0.png").copy(Bitmap.Config.ARGB_8888, true);
-
-        Paint paint = new Paint();
-        paint.setColor(Color.RED);// 设置红色
-
-        Canvas canvas = new Canvas(bitmap);
 
         if (newX == oldX && newY == oldY) {
-            canvas.drawCircle(newX, newY, 25, paint); // 绘制点
-        } else {
-            paint.setStrokeWidth((float) 20.0);
-            canvas.drawLine(oldX, oldY, newX, newY, paint);  // 绘制线
-        }
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(Color.RED);// 设置红色
+            canvas.drawCircle(newX, newY, 20, paint); // 绘制点
+        } /*else {
+            paint.setColor(Color.YELLOW);// 设置黄色
+            paint.setStrokeWidth((float) 5.0);
+            canvas.drawPath(path, paint);  // 绘制线
+        }*/
 
         canvas.save(Canvas.ALL_SAVE_FLAG);
         canvas.restore();
-
 
         File f = new File("/sdcard/0.png");
         try {
@@ -134,19 +179,4 @@ public class MainActivity extends Activity implements Runnable {
             e.printStackTrace();
         }
     }
-
-    /* private int processHistory(MotionEvent event)
-    {
-        int historySize = event.getHistorySize();
-        for (int i = 0; i < historySize; i++) {
-            long time = event.getHistoricalEventTime(i);
-            float pressure = event.getHistoricalPressure(i);
-            float x = event.getHistoricalX(i);
-            float y = event.getHistoricalY(i);
-            float size = event.getHistoricalSize(i);
-            // 处理过程…
-        }
-        return historySize;
-    }*/
-
 }
