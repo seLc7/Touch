@@ -19,20 +19,30 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 
 
 public class MainActivity extends Activity implements Runnable {
 
-    TextView touchView;
+    private TextView touchView;
     // oldX,oldY:点下去获取的坐标；newX,newY：抬起获取的坐标；touch：移动中的坐标；mX,mY：公共存储坐标，存储运动轨迹的起始坐标。
-    int oldX, oldY, newX, newY, touchX, touchY,mX,mY;
-    static Handler handler;
-    Canvas canvas = new Canvas();
-    Bitmap bitmap = null;
-    Paint paint = new Paint();
-    Path path = new Path();
+    private int oldX, oldY, newX, newY, touchX, touchY, mX, mY;
+    private static Handler handler;
+    private Canvas canvas = new Canvas();
+    private Bitmap bitmap = null;
+    private Paint paint = new Paint();
+    private Path path = new Path();
 
     private static final int DONE = 1;
+
+    private ArrayList pointRGBList = new ArrayList();
+    private ArrayList lineRGBList = new ArrayList();
+    private int count = 0; // 自增量，用于获取colorlist里的颜色
+    private static final int step = 30; // 去颜色的渐变点个数
+    private static final int[] beginPoint = {255, 0, 0};  // 起点颜色
+    private static final int[] endPoint = {0, 255, 0}; // 终点颜色
+    private static final int[] beginLine = {0, 0, 255};
+    private static final int[] endLine = {200, 0, 0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +79,6 @@ public class MainActivity extends Activity implements Runnable {
         });
 
         handler = new Handler() {
-
             public void handleMessage(Message msg) {
                 switch (msg.what) {
                     case DONE:
@@ -78,6 +87,8 @@ public class MainActivity extends Activity implements Runnable {
             }
         };
 
+        pointRGBList = shadeColor(beginPoint, endPoint, step);
+        lineRGBList = shadeColor(beginLine, endLine, step);
     }
 
     private void display(String eventType, MotionEvent event) {
@@ -101,16 +112,15 @@ public class MainActivity extends Activity implements Runnable {
         path.reset();
         oldX = (int) event.getRawX();
         oldY = (int) event.getRawY();
-        mX=oldX;
-        mY=oldY;
-        path.moveTo(oldX,oldY);
+        mX = oldX;
+        mY = oldY;
+        path.moveTo(oldX, oldY);
     }
 
     /*获取up触点坐标*/
     private void touchUp(MotionEvent event) {
         newX = (int) event.getRawX();
         newY = (int) event.getRawY();
-
     }
 
     /*手指在屏幕上滑动时调用*/
@@ -126,12 +136,11 @@ public class MainActivity extends Activity implements Runnable {
 
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(5);
-        paint.setColor(Color.YELLOW);
+        paint.setStrokeWidth(7);
+        paint.setColor(Color.GREEN);
 
         //两点之间的距离大于等于3时，生成贝塞尔绘制曲线
-        if (dx >= 3 || dy >= 3)
-        {
+        if (dx >= 3 || dy >= 3) {
             //设置贝塞尔曲线的操作点为起点和终点的一半
             float cX = (touchX + previousX) / 2;
             float cY = (touchY + previousY) / 2;
@@ -148,19 +157,55 @@ public class MainActivity extends Activity implements Runnable {
         }
     }
 
-    /*绘图进程*/
+    /*生成两个颜色之间step数量个渐变色*/
+    private ArrayList shadeColor(int[] beginColor, int[] endColor, int step) {
+        ArrayList<int[]> colorList = new ArrayList<>();
+
+        for (int j = 0; j < step; j++) {
+            int f[] = new int[3];
+            for (int i = 0; i < 3; i++) {
+                //这个就是算法，RGB三色都按同样的算法
+                f[i] = beginColor[i] - (beginColor[i] - endColor[i]) * j / step;
+            }
+            colorList.add(f);
+        }
+        return colorList;
+        // Log.i("color", c[0]+" "+c[1]);
+    }
+
+
+    /*绘图线程*/
     @Override
     public void run() {
 
-        if (newX == oldX && newY == oldY) {
+        if (newX == oldX && newY == oldY && count < step) {
+            int[] f = (int[]) pointRGBList.get(count);
+            count++;
+            Log.i("color", f[0] + " " + f[1] + " " + f[2]);
+
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(Color.RED);// 设置红色
+            paint.setARGB(255, f[0], f[1], f[2]); // 设置颜色
+            // paint.setColor(Color.RED);// 设置红色
             canvas.drawCircle(newX, newY, 20, paint); // 绘制点
-        } /*else {
-            paint.setColor(Color.YELLOW);// 设置黄色
-            paint.setStrokeWidth((float) 5.0);
-            canvas.drawPath(path, paint);  // 绘制线
-        }*/
+        } else if (newX == oldX && newY == oldY && count >= step) {
+            count = 0;
+            int[] f = (int[]) pointRGBList.get(count);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setARGB(255, f[0], f[1], f[2]); // 设置颜色
+            canvas.drawCircle(newX, newY, 20, paint); // 绘制点
+        } else if (newX != oldX && newY != oldY && count < step) {
+            // paint.setColor(Color.YELLOW);// 设置黄色
+            int[] f = (int[]) lineRGBList.get(count);
+            paint.setARGB(255,f[0], f[1], f[2]);
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(newX, newY, 15, paint); // 绘制点
+        }else if(newX != oldX && newY != oldY && count >= step){
+            count = 0;
+            int[] f = (int[]) lineRGBList.get(count);
+            paint.setARGB(255,f[0], f[1], f[2]);
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(newX, newY, 15, paint);
+        }
 
         canvas.save(Canvas.ALL_SAVE_FLAG);
         canvas.restore();
