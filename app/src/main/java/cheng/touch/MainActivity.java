@@ -142,7 +142,7 @@ public class MainActivity extends Activity implements Runnable {
         final float dx = Math.abs(touchX - previousX);
         final float dy = Math.abs(touchY - previousY);
 
-        int[] f = (int[]) pointRGBList.get(count);
+        int[] f = (int[]) lineRGBList.get(count);
 
 
         paint.setAntiAlias(true);
@@ -207,7 +207,7 @@ public class MainActivity extends Activity implements Runnable {
             // paint.setColor(Color.RED);// 设置红色
             canvas.drawCircle(newX, newY, 20, paint); // 绘制点
         } else {
-            int[] f = (int[]) pointRGBList.get(count);
+            int[] f = (int[]) lineRGBList.get(count);
 
             paint.setARGB(255, f[0], f[1], f[2]); // 设置颜色
             paint.setStyle(Paint.Style.FILL);
