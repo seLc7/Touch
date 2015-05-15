@@ -174,6 +174,7 @@ public class MainActivity extends Activity implements Runnable {
         currentTime = date.getTime();
         if (currentTime > endTime) {
             beginTime = endTime;
+            endTime = beginTime + step * 1000;
         }
         count = (int) ((currentTime - beginTime) / 1000);
     }
