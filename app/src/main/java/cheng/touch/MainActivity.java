@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.os.Bundle;
@@ -19,7 +18,6 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -37,15 +35,14 @@ public class MainActivity extends Activity implements Runnable {
 
     private static final int DONE = 1;
 
-    private ArrayList pointRGBList = new ArrayList();
-    // private ArrayList lineRGBList = new ArrayList();
+    private ArrayList pointRGBList = new ArrayList(); // 点颜色列表
+    private ArrayList lineRGBList = new ArrayList(); // 轨迹颜色列表
     private int count = 0; // 自增量，用于获取colorlist里的颜色
     private static final int step = 5 * 60; // 颜色的渐变点个数；5min,每秒分配一个颜色
     private static final int[] beginPoint = {255, 0, 0};  // 起点颜色
-    private static final int[] endPoint = {0, 0, 255}; // 终点颜色
-    /*private static final int[] beginLine = {0, 0, 255};
-    private static final int[] endLine = {200, 0, 0};
-    */
+    private static final int[] endPoint = {0, 255, 0}; // 终点颜色
+    private static final int[] beginLine = {0, 255, 0};
+    private static final int[] endLine = {0, 0, 255};
     private long beginTime, endTime, currentTime;
     Date date; // 获取系统时间
 
@@ -54,16 +51,9 @@ public class MainActivity extends Activity implements Runnable {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
-        SimpleDateFormat secondFormat = new SimpleDateFormat("ss");
-
         date = new Date(System.currentTimeMillis());
         beginTime = date.getTime();
         endTime = beginTime + step * 1000;
-
-        String minuteStr = minuteFormat.format(date);
-        String secondStr = secondFormat.format(date);
-        Log.i("time", minuteStr + " " + secondStr + " " + beginTime);
 
         bitmap = BitmapFactory.decodeFile("/sdcard/0.png").copy(Bitmap.Config.ARGB_8888, true);
         canvas = new Canvas(bitmap);
@@ -78,7 +68,6 @@ public class MainActivity extends Activity implements Runnable {
                     case (MotionEvent.ACTION_DOWN):
                         display("ACTION_DOWN", event);
                         getCount();
-                        Log.i("time", currentTime + "");
                         touchDown(event);
                         break;
                     case (MotionEvent.ACTION_UP):
@@ -89,6 +78,7 @@ public class MainActivity extends Activity implements Runnable {
                         break;
                     case (MotionEvent.ACTION_MOVE):
                         display("ACTION_MOVE", event);
+                        getCount();
                         touchMove(event);
                         break;
                 }
@@ -105,8 +95,8 @@ public class MainActivity extends Activity implements Runnable {
             }
         };
 
-        pointRGBList = shadeColor(beginPoint, endPoint, step);
-        // lineRGBList = shadeColor(beginLine, endLine, step);
+        pointRGBList = shadeColor(beginPoint, endPoint, step);// 获取颜色列表
+        lineRGBList = shadeColor(beginLine, endLine, step);
     }
 
     private void display(String eventType, MotionEvent event) {
@@ -152,10 +142,13 @@ public class MainActivity extends Activity implements Runnable {
         final float dx = Math.abs(touchX - previousX);
         final float dy = Math.abs(touchY - previousY);
 
+        int[] f = (int[]) pointRGBList.get(count);
+
+
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(7);
-        paint.setColor(Color.GREEN);
+        paint.setARGB(255, f[0], f[1], f[2]);
 
         //两点之间的距离大于等于3时，生成贝塞尔绘制曲线
         if (dx >= 3 || dy >= 3) {
@@ -180,9 +173,9 @@ public class MainActivity extends Activity implements Runnable {
         date = new Date(System.currentTimeMillis());
         currentTime = date.getTime();
         if (currentTime > endTime) {
-            beginTime=endTime;
+            beginTime = endTime;
         }
-        count=(int)((currentTime-beginTime)/1000);
+        count = (int) ((currentTime - beginTime) / 1000);
     }
 
     /*生成两个颜色之间step数量个渐变色*/
@@ -198,7 +191,6 @@ public class MainActivity extends Activity implements Runnable {
             colorList.add(f);
         }
         return colorList;
-        // Log.i("color", c[0]+" "+c[1]);
     }
 
 
@@ -208,38 +200,19 @@ public class MainActivity extends Activity implements Runnable {
 
         if (newX == oldX && newY == oldY) {
             int[] f = (int[]) pointRGBList.get(count);
-            count++;
             Log.i("color", f[0] + " " + f[1] + " " + f[2]);
 
             paint.setStyle(Paint.Style.FILL);
             paint.setARGB(255, f[0], f[1], f[2]); // 设置颜色
             // paint.setColor(Color.RED);// 设置红色
             canvas.drawCircle(newX, newY, 20, paint); // 绘制点
-        } /*else if (newX == oldX && newY == oldY && count >= step) {
-            count = 0;
+        } else {
             int[] f = (int[]) pointRGBList.get(count);
-            paint.setStyle(Paint.Style.FILL);
+
             paint.setARGB(255, f[0], f[1], f[2]); // 设置颜色
-            canvas.drawCircle(newX, newY, 20, paint); // 绘制点
-        }*/ else {
-            paint.setColor(Color.GREEN);
             paint.setStyle(Paint.Style.FILL);
             canvas.drawCircle(newX, newY, 15, paint); // 绘制点
         }
-
-        /* else if (newX != oldX && newY != oldY && count < step) {
-            // paint.setColor(Color.YELLOW);// 设置黄色
-            int[] f = (int[]) lineRGBList.get(count);
-            paint.setARGB(255,f[0], f[1], f[2]);
-            paint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(newX, newY, 15, paint); // 绘制点
-        }else if(newX != oldX && newY != oldY && count >= step){
-            count = 0;
-            int[] f = (int[]) lineRGBList.get(count);
-            paint.setARGB(255,f[0], f[1], f[2]);
-            paint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(newX, newY, 15, paint);
-        }*/
 
         canvas.save(Canvas.ALL_SAVE_FLAG);
         canvas.restore();
